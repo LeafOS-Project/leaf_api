@@ -1,0 +1,45 @@
+server {
+        listen 80;
+        listen [::]:80;
+        server_name get.leafos.org;
+        return 301 https://$server_name$request_uri;
+        root /var/www/get.leafos.org/;
+
+        access_log /var/log/nginx/access/get.leafos.org.log;
+        error_log /var/log/nginx/error/get.leafos.org.log;
+}
+
+server {
+	listen 443 ssl http2;
+	listen [::]:443 ssl http2;
+
+	root /var/www/get.leafos.org/;
+
+	# Add index.php to the list if you are using PHP
+	index index.html index.htm index.php;
+
+	server_name get.leafos.org;
+	access_log /var/log/nginx/access/get.leafos.org.log;
+	error_log /var/log/nginx/error/get.leafos.org.log;
+
+	location / {
+		# First attempt to serve request as file, then
+		# as directory, then fall back to displaying a 404.
+		try_files $uri $uri/ index.html index.php;
+		index index.html index.htm index.php;
+	}
+
+	# OTA check
+	rewrite ^/ota/(.*)/(.*)/(.*) /index.php?device=$1&flavor=$2&incremental=$3 break;
+	rewrite ^/ota/(.*)/(.*) /index.php?device=$1&flavor=$2 break;
+
+	# pass PHP scripts to FastCGI server
+	#
+	location ~ \.php$ {
+		include snippets/fastcgi-php.conf;
+		fastcgi_pass php8;
+	}
+
+	ssl_certificate /etc/letsencrypt/live/leafos.org/fullchain.pem; # managed by Certbot
+	ssl_certificate_key /etc/letsencrypt/live/leafos.org/privkey.pem; # managed by Certbot
+}
